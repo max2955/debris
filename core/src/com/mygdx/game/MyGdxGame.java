@@ -43,6 +43,8 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 	PolygonSpriteBatch polyBatch;
 	Texture textureSolid;
 	Texture intersecSolid;
+	Texture rotateHandleSolid;
+	Texture flipHandleSolid;
 	private OrthographicCamera camera;
 	private Viewport viewport;
 	BodyEditorLoader loader ;
@@ -51,16 +53,19 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 	Vector2 touchPoint = null ;
 	Vector2 newTouchedOrigin ;
 
-	enum GameState  {DRAGGING, NONE} ;
+	enum GameState  {DRAGGING_BLOCK, NONE, DRAGGING_ROTATE_HANDLE} ;
 	GameState gameState ;
 
 	LinkedList<Block> blocks;
 	Block touchedBlock = null;
+	int touchedIndex = 0 ;
 
 	Block actor1 ;
 	Block actor2 ;
 	Block actor3 ;
 	BlockSpriteFactory spriteFactory ;
+	Block rotateHandle;
+	Block flipHandle;
 
 	final float XSIZE = 10f ;
     final float YSIZE = 10f ;
@@ -80,11 +85,14 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 		is =  new Intersector() ;
 		gameState = GameState.NONE ;
 		blocks = new LinkedList<Block>() ;
+
         createTextures();
         ///////////////////////////
         //createPolygons();      //
 		///////////////////////////
 		loadPolygons ();
+		touchedBlock = blocks.get(0) ;
+		createHandles();
 		Gdx.input.setInputProcessor(this);
 	}
 
@@ -98,7 +106,19 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 		pix.setColor(0xDECDBFFF);
 		pix.fill();
 		textureSolid = new Texture(pix);
+
+		pix = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+		pix.setColor(0x00FF00FF);
+		pix.fill();
+		rotateHandleSolid = new Texture(pix);
+
+		pix = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+		pix.setColor(0x52DBFFFF);
+		pix.fill();
+		flipHandleSolid = new Texture(pix);
+
 	}
+
 
 	private void createPolygons(){
 		float f[] = {0,0,1,1,2,0} ;
@@ -119,6 +139,23 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 		//blocks.add(actor1);
 		//blocks.add(actor2);
 		blocks.add(actor3);
+	}
+
+	private void createHandles(){
+		float f[] = {0,0,-0.35f,0.75f,0,1.2f,0.35f,0.75f} ;
+		rotateHandle = new Block(f,rotateHandleSolid,spriteFactory);
+		rotateHandle.setOrigin(0,0);
+		rotateHandle.setPosition(0.0f,0.0f);
+		rotateHandle.setScale(1,1);
+
+
+		flipHandle = new Block(f,flipHandleSolid,spriteFactory);
+		flipHandle.setPosition(0.0f,0.0f);
+		flipHandle.setOrigin(0,0);
+		flipHandle.setScale(1,1);
+		flipHandle.rotateBy(-90);
+		//flipHandle.getPolygonSprite().setRotation(-90);
+		//flipHandle.getPolygon().setRotation(-90);
 	}
 
 
@@ -180,6 +217,12 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 			}
 		}
 
+		rotateHandle.setPosition(touchedBlock.polygonSprite.getX()+touchedBlock.getCentroid().x,touchedBlock.polygonSprite.getY()+touchedBlock.getCentroid().y);
+		rotateHandle.getPolygonSprite().draw(polyBatch) ;
+
+		flipHandle.setPosition(touchedBlock.polygonSprite.getX()+touchedBlock.getCentroid().x,touchedBlock.polygonSprite.getY()+touchedBlock.getCentroid().y);
+		flipHandle.getPolygonSprite().draw(polyBatch) ;
+
         polyBatch.end();
 
 		shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
@@ -193,9 +236,12 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 				shapeRenderer.circle(f[i], f[i + 1], 0.1f, 10);
 			}
 			//shapeRenderer.circle(thisBlock.getCentroid().x, thisBlock.getCentroid().y, 0.1f, 10);
-			thisBlock.rotateBy(0.1f);
+			//thisBlock.rotateBy(0.1f);
 		}
 //		shapeRenderer.polygon(actor3.getPolygon().getVertices());
+		shapeRenderer.setColor(1,0.5f,0.5f,1);
+		shapeRenderer.circle(flipHandle.getX()+flipHandle.getOriginX(), flipHandle.getY()+flipHandle.getOriginY(), 0.1f, 10);
+		//flipHandle.rotateBy(-1);
 		shapeRenderer.end();
 	}
 	
@@ -227,18 +273,37 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 		v.z = 0;
 		camera.unproject(v);
 		touchPoint = new Vector2(v.x,v.y) ;
-		for(int i = 0;i<blocks.size();++i) {
+
+		if (is.isPointInPolygon(flipHandle.getPolygon().getTransformedVertices(),0,
+				                 flipHandle.getPolygon().getTransformedVertices().length,v.x,v.y) ) {
+		     System.out.println("flip touched");
+		     //flip touched block
+			 gameState = GameState.NONE ;
+		     return true;
+		}
+
+		if (is.isPointInPolygon(rotateHandle.getPolygon().getTransformedVertices(),0,
+				rotateHandle.getPolygon().getTransformedVertices().length,v.x,v.y) ) {
+			System.out.println("rotate touched");
+			gameState = GameState.DRAGGING_ROTATE_HANDLE ;
+			return true;
+		}
+
+
+
+			for(int i = 0;i<blocks.size();++i) {
 			Block thisBlock = blocks.get(i);
 			float [] pa = thisBlock.getPolygon().getTransformedVertices() ;
 			if (is.isPointInPolygon(pa,0,pa.length,v.x,v.y) )  {
 				touchedBlock = thisBlock ;
-				gameState = GameState.DRAGGING ;
+				touchedIndex = i ;
+				gameState = GameState.DRAGGING_BLOCK;
 				newTouchedOrigin = new Vector2(touchedBlock.getPolygon().getX(),touchedBlock.getPolygon().getY()) ;
-				System.out.println("i="+i);
+				//System.out.println("i="+i);
 				break ;
 			}
 		}
-		return false;
+		return true;
 	}
 
 	@Override
@@ -266,14 +331,19 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 		Vector2 diff = new Vector2(dragPoint) ;
 		diff.sub(touchPoint) ;
 
-		if (gameState == GameState.DRAGGING) {
+		if (gameState == GameState.DRAGGING_BLOCK) {
 			//System.out.println("dragging poly");
 			Vector2 tmp = new Vector2(newTouchedOrigin) ;
 			tmp.add(diff) ;
 			touchedBlock.setPosition(tmp.x,tmp.y);
 			//System.out.println(diff);
 		}
-		return false;
+
+		if (gameState == GameState.DRAGGING_ROTATE_HANDLE) {
+			System.out.println("dragging rotate handle");
+		}
+
+		return true;
 	}
 
 

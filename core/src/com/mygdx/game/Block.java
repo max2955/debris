@@ -52,7 +52,7 @@ public class Block extends Actor {
         super.setPosition(x,y);
         polygonSprite.setPosition(x,y);
         polygon.setPosition(x,y);
-        updateCenter();
+       // updateCenter();
     }
 
     @Override
@@ -60,7 +60,15 @@ public class Block extends Actor {
         super.setScale(width,height);
         polygonSprite.setScale(width,height);
         polygon.setScale(width,height);
-        updateCenter();
+        //updateCenter();
+    }
+
+    @Override
+    public void setOrigin (float x,float y)    {
+        super.setOrigin(x,y);
+        polygonSprite.setOrigin(x,y);
+        polygon.setOrigin(x,y);
+        //updateCenter();
     }
 
 
