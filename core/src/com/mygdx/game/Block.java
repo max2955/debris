@@ -82,4 +82,12 @@ public class Block extends Actor {
     public Vector2 getCentroid() {
         return centroid;
     }
+
+    public void setPolygon(Polygon polygon) {
+        this.polygon = polygon;
+    }
+
+    public void setPolygonSprite(PolygonSprite polygonSprite) {
+        this.polygonSprite = polygonSprite;
+    }
 }
