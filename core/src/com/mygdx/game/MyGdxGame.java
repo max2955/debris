@@ -52,7 +52,7 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 	Intersector is;
 	ShapeRenderer shapeRenderer;
 	Vector2 touchPoint = null ;
-	Vector2 newTouchedOrigin ;
+	Vector2 newTouchedPosition ;
 
 	final int BLOCK_CREATION_SCALE = 3 ;
 
@@ -125,19 +125,19 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 
 
 	private void createPolygons(){
-		float f[] = {0,0,1,1,2,0} ;
+		float f[] = {0,0,0.5f,0.5f,1,0} ;
 		actor1 = new Block(f,textureSolid,spriteFactory);
 		actor1.setPosition(0.0f,0.0f);
-		actor1.setScale(BLOCK_CREATION_SCALE-1,BLOCK_CREATION_SCALE-1);
+		actor1.setScale(BLOCK_CREATION_SCALE,BLOCK_CREATION_SCALE);
 
 		actor2 = new Block(f,textureSolid,spriteFactory);
 		actor2.setPosition(0.5f,0.5f);
-		actor2.setScale(BLOCK_CREATION_SCALE-1,BLOCK_CREATION_SCALE-1);
+		actor2.setScale(BLOCK_CREATION_SCALE,BLOCK_CREATION_SCALE);
 
 		float f2[] = {0,0,0,1,1,1,1,0} ;
 		actor3 = new Block(f2,textureSolid,spriteFactory);
 		actor3.setPosition(-2.0f,-2.0f);
-		actor3.setScale(BLOCK_CREATION_SCALE-1,BLOCK_CREATION_SCALE-1);
+		actor3.setScale(BLOCK_CREATION_SCALE,BLOCK_CREATION_SCALE);
 		actor3.rotateBy(90);
 
 		blocks.add(actor1);
@@ -158,14 +158,11 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 		flipHandle.setOrigin(0,0);
 		flipHandle.setScale(1,1);
 		flipHandle.rotateBy(-90);
-		//flipHandle.getPolygonSprite().setRotation(-90);
-		//flipHandle.getPolygon().setRotation(-90);
 	}
 
 
 	private void loadPolygons () {
 		//loader.getInternalModel().rigidBodies.forEach((key,value) -> System.out.println(key + " = " + value));
-
 		float j = -2f;
 		float n = 0 ;
 		Iterator<Entry<String, BodyEditorLoader.RigidBodyModel>> it = loader.getInternalModel().rigidBodies.entrySet().iterator();
@@ -181,19 +178,13 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 				float [] blockVertices = Arrays.copyOf(f,f.length) ;
 
 				Block block = new Block(blockVertices,textureSolid,spriteFactory) ;
-
 				block.setPosition(j+n*2, j+n*2);
 				block.setScale(BLOCK_CREATION_SCALE,BLOCK_CREATION_SCALE);
-
-				//block.rotateBy(45);
 				++n ;
-
 				//System.out.println("polygon vertices="+Arrays.toString(f)) ;
 				//System.out.println("block vertices="+Arrays.toString(blockVertices)) ;
-
 				blocks.add(block);
 			}
-			//break;
 		}
 	}
 
@@ -233,15 +224,16 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 
 		shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
 		shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.setColor(1,0,0,1);
 
 		for(int j = 0;j<blocks.size();++j) {
 			Block thisBlock = blocks.get(j) ;
 			float [] f = thisBlock.getPolygon().getTransformedVertices();
+			shapeRenderer.setColor(1,0,0,1);
 			for(int i=0;i<f.length-1;i+=2) {
 				shapeRenderer.circle(f[i], f[i + 1], 0.1f, 10);
 			}
-			//shapeRenderer.circle(thisBlock.getCentroid().x, thisBlock.getCentroid().y, 0.1f, 10);
+			shapeRenderer.setColor(0,0,0,1);
+			shapeRenderer.circle(thisBlock.getX()+thisBlock.getCentroid().x, thisBlock.getY()+thisBlock.getCentroid().y, 0.2f, 10);
 			//thisBlock.rotateBy(0.1f);
 		}
 //		shapeRenderer.polygon(actor3.getPolygon().getVertices());
@@ -281,18 +273,14 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 			x = oldVertices[i] ;
 			y = oldVertices[i+1] ;
 
-			if (Math.abs(y)<0.01) {
-				// |y| almost 0
+			if (Math.abs(y)<0.01)
 				y = 0;
-			}
 
 			yDist = Math.abs(o.y-y);
 
-			if (y < o.y) {
+			if (y < o.y)
 				y = o.y + yDist;
-			}
 			else
-			  //if (y > o.y)
 			  	y = o.y - yDist;
 
 			newVertices[i] = x ;
@@ -307,7 +295,7 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 			blocks.add(newBlock);
 			blocks.remove(touchedIndex);
 			touchedIndex = blocks.size()-1;
-			touchedBlock = blocks.get(touchedIndex);
+			//touchedBlock = blocks.get(touchedIndex);
 		}
 	}
 
@@ -336,16 +324,16 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 			return true;
 		}
 
-
-
-			for(int i = 0;i<blocks.size();++i) {
+		for(int i = 0;i<blocks.size();++i) {
 			Block thisBlock = blocks.get(i);
 			float [] pa = thisBlock.getPolygon().getTransformedVertices() ;
 			if (is.isPointInPolygon(pa,0,pa.length,v.x,v.y) )  {
 				touchedBlock = thisBlock ;
+				rotateHandle.setRotation(-touchedBlock.getRotation());
+				flipHandle.setRotation(-90-touchedBlock.getRotation());
 				touchedIndex = i ;
 				gameState = GameState.DRAGGING_BLOCK;
-				newTouchedOrigin = new Vector2(touchedBlock.getPolygon().getX(),touchedBlock.getPolygon().getY()) ;
+				newTouchedPosition = new Vector2(touchedBlock.getPolygon().getX(),touchedBlock.getPolygon().getY()) ;
 				//System.out.println("i="+i);
 				break ;
 			}
@@ -380,17 +368,30 @@ public class MyGdxGame extends ApplicationAdapter implements InputProcessor {
 
 		if (gameState == GameState.DRAGGING_BLOCK) {
 			//System.out.println("dragging poly");
-			Vector2 tmp = new Vector2(newTouchedOrigin) ;
+			Vector2 tmp = new Vector2(newTouchedPosition) ;
 			tmp.add(diff) ;
 			touchedBlock.setPosition(tmp.x,tmp.y);
+			return true;
 			//System.out.println(diff);
 		}
 
 		if (gameState == GameState.DRAGGING_ROTATE_HANDLE) {
 			//System.out.println("dragging rotate handle");
-
+			Vector2 o  = new Vector2(touchedBlock.getX()+touchedBlock.getCentroid().x, touchedBlock.getY()+touchedBlock.getCentroid().y) ;
+			Vector2 reference = new Vector2(0,1) ;
+			float touchedRotationDegrees = touchedBlock.getRotation() ;
+			reference.rotate(touchedRotationDegrees) ;
+			Vector2 dragRot = new Vector2(dragPoint);
+			dragRot.sub(o) ;
+            if (dragRot.len()>0.01) {
+            	float angle = dragRot.angle(reference) ;
+            	System.out.println("angle="+angle);
+            	touchedBlock.rotateBy(-angle);
+            	rotateHandle.rotateBy(-angle);
+				flipHandle.rotateBy(-angle);
+			}
+			return true;
 		}
-
 		return true;
 	}
 

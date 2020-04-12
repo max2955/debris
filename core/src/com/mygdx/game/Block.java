@@ -18,11 +18,15 @@ public class Block extends Actor {
     float [] vertices ;
     Vector2 centroid;
 
+
     Block(float [] vertices, Texture texture, BlockSpriteFactory spriteFactory) {
         this.vertices = Arrays.copyOf(vertices,vertices.length) ;
         polygon = new Polygon(vertices) ;
         polygonSprite = spriteFactory.createBlockSprite(vertices,texture) ;
         updateCenter() ;
+        this.setRotation(0);
+        this.polygonSprite.setRotation(0);
+        this.polygon.setRotation(0);
         //polygonSprite.setOrigin(centroid.x,centroid.y);
         //polygon.setOrigin(centroid.x,centroid.y);
     }
@@ -89,5 +93,12 @@ public class Block extends Actor {
 
     public void setPolygonSprite(PolygonSprite polygonSprite) {
         this.polygonSprite = polygonSprite;
+    }
+
+    @Override
+    public  void setRotation(float degrees) {
+        super.setRotation(degrees);
+        polygon.setRotation(degrees);
+        polygonSprite.setRotation(degrees);
     }
 }
